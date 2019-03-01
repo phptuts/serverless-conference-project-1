@@ -10,7 +10,7 @@ module.exports.create = async (event, context) => {
 
     const json = JSON.parse(event.body);
     const gratitudeItem = json.gratitute || 'Nothing There :0';
-
+   
     const params = {
         TableName: process.env.DYNAMODB_TABLE,
         Item: {
