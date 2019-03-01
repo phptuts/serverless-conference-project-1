@@ -18,13 +18,37 @@ service: serverless-enterprise # NOTE: optionally update this with your service 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
 frameworkVersion: ">=1.37.1"
+custom:
+  serverless_stage: ${env:SERVERLESS_STAGE, 'dev'} # Environment variables
+  gratitude_table: "gratitude-${opt:stage, self:provider.stage}"
+
+  
+
 
 provider:
   name: aws
   runtime: nodejs8.10
-
+  stage: ${self:custom.serverless_stage}
+  # environment:
+  #   DYNAMODB_TABLE: ${self:custom.gratitude_table}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ec2:RevokeSecurityGroupIngress
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource:
+        - Ref: TagEnforcerSNSTopic
+    - Effect: Allow
+      Action:
+        - 'lambda:ListFunctions'
+        - 'lambda:GetFunction'
+      Resource:
+        - '*'
 plugins:
-  - '@serverless/enterprise-plugin'
+  # - '@serverless/enterprise-plugin'
   - serverless-offline
 functions:
   hello:
@@ -37,7 +61,68 @@ functions:
       - http:
           path: lipsum
           method: get
+  create_gratitude:
+    handler: create_gratitude/index.create
+    events:
+      - http:
+          path: gratitude
+          method: post
 
+  portSecurer:
+    handler: port.securer
+    runtime: python2.7
+    events:
+      - cloudwatchEvent:
+          event:
+            source:
+              - aws.ec2
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventName:
+                - AuthorizeSecurityGroupIngress
+  tagEnforcer:
+    handler: enforcer.run
+    runtime: python2.7
+    environment:
+      # This will eventually use the CloudFormation
+      # Reference feature to tell our function environment
+      # about the actual ARN of our topic
+      SNS_TOPIC_ARN: {Ref: TagEnforcerSNSTopic}
+    events:
+      - schedule: rate(5 minutes)
+      # You can use the above shorthand, or you can also use
+      # a cron like syntax if you need more power
+      # For example: Every 5 minutes between 8:00 AM and 5:55 PM weekdays
+      # - schedule: cron(0/5 8-17 ? * MON-FRI *)
+
+
+
+resources:
+  Resources:
+    TagEnforcerSNSTopic: 
+      Type: AWS::SNS::Topic
+      Properties: 
+        Subscription: 
+          - Endpoint: glaserpower@gmail.com
+            Protocol: "email"
+
+
+# resources:
+#   Resources:
+#     GratitudeTable:
+#       Type: AWS::DynamoDB::Table
+#       Properties:
+#         TableName: ${self:custom.gratitude_table}
+#         AttributeDefinitions:
+#           - AttributeName: id
+#             AttributeType: S
+#         KeySchema:
+#           - AttributeName: id
+#             KeyType: HASH
+#         ProvisionedThroughput:
+#           ReadCapacityUnits: '1'
+#           WriteCapacityUnits: '1'
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
