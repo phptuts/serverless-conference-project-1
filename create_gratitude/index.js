@@ -5,7 +5,7 @@ const uuid = require('uuid');
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-
+   
 module.exports.create = async (event, context) => {
 
     const json = JSON.parse(event.body);
