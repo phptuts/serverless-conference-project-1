@@ -1,6 +1,13 @@
 'use strict';
 
+const loremIpsum = require('lorem-ipsum');
+// Outside the function gets cached
+
 module.exports.hello = async (event, context) => {
+
+  // Inside the function does not
+  const output = loremIpsum();
+
   let body;
   if (event.body) {
     body = JSON.parse(body);
@@ -8,7 +15,7 @@ module.exports.hello = async (event, context) => {
   return {
     statusCode: 200,
     body: JSON.stringify({
-      message: 'Go Serverless v1.0! Your function executed successfully!',
+      message: output,
       input: event,
     }),
   };
